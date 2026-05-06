@@ -1,1 +1,1 @@
-# CV-Generator
+# CV-Generator by Marina
