@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SevenPro — CV Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
+<script src="https://unpkg.com/docxtemplater@3.45.1/build/docxtemplater.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- mammoth for DOCX text extraction -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--red:#EF4A37;--purple:#6B3FA0;--dark:#1A1A1A;--gray:#666;--border:#E8E8E8;--bg:#F4F3F1;--card:#fff;--f:'Montserrat',system-ui,sans-serif;}
+html,body{height:100%;font-family:var(--f);background:var(--bg);color:var(--dark);font-size:14px;-webkit-font-smoothing:antialiased;}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.topbar{background:var(--dark);display:flex;align-items:center;padding:0 20px;height:52px;flex-shrink:0;gap:14px;}
+.tb-logo img{height:24px;display:block;}
+.tb-sep{width:1px;height:18px;background:rgba(255,255,255,.2);}
+.tb-title{font-size:12px;font-weight:500;color:rgba(255,255,255,.4);letter-spacing:.05em;}
+.tb-actions{margin-left:auto;display:flex;gap:8px;}
+.panels{display:flex;flex:1;overflow:hidden;}
+.lpanel{width:480px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border);}
+.rpanel{flex:1;overflow-y:auto;background:#DDDBD8;padding:24px 16px;display:flex;flex-direction:column;align-items:center;}
+.preview-lbl{font-size:10px;font-weight:600;color:#999;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:6px;font-family:var(--f);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s,transform .1s;white-space:nowrap;}
+.btn:active{transform:scale(.97);}.btn:hover{opacity:.85;}
+.btn-primary{background:var(--red);color:#fff;}
+.btn-secondary{background:rgba(255,255,255,.1);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.12);}
+.btn-secondary:hover{background:rgba(255,255,255,.16);opacity:1;}
+.btn-upload{background:rgba(107,63,160,.15);color:#A78BCC;border:1px solid rgba(107,63,160,.3);}
+.btn-upload:hover{background:rgba(107,63,160,.25);opacity:1;}
+.btn-outline{background:transparent;color:var(--dark);border:1px solid var(--border);font-size:11px;padding:5px 11px;}
+.btn-ghost{background:transparent;color:var(--gray);font-size:11px;padding:5px 9px;border:1px solid transparent;}
+.btn-ghost:hover{border-color:var(--border);color:var(--dark);}
+.btn-danger{background:#FFF0EE;color:#C0392B;border:1px solid #FDDBD7;font-size:11px;padding:5px 11px;}
+.btn-add{background:var(--bg);color:var(--purple);border:1.5px dashed #C4B5D9;font-size:12px;width:100%;padding:9px;border-radius:8px;margin-top:6px;cursor:pointer;font-family:var(--f);font-weight:600;transition:background .15s;}
+.btn-add:hover{background:#F0EBF9;}
+.btn-mob{display:none;}
+.btn-na{background:transparent;border:1px solid var(--border);color:#999;font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer;font-family:var(--f);font-weight:500;transition:all .15s;}
+.btn-na.active{background:#FFF0EE;color:#C0392B;border-color:#FDDBD7;}
+
+/* ── Upload zone ── */
+.upload-zone{border:2px dashed #C4B5D9;border-radius:10px;padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;background:#FDFCFF;position:relative;}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--purple);background:#F0EBF9;}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:24px;margin-bottom:6px;}
+.upload-title{font-size:13px;font-weight:600;color:var(--dark);margin-bottom:3px;}
+.upload-sub{font-size:11px;color:#999;}
+.upload-banner{background:#F0EBF9;border:1px solid #C4B5D9;border-radius:8px;padding:10px 13px;display:flex;align-items:center;gap:10px;margin-bottom:5px;}
+.upload-banner-icon{font-size:16px;flex-shrink:0;}
+.upload-banner-text{font-size:12px;font-weight:500;color:var(--purple);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.upload-banner .btn-ghost{color:var(--gray);font-size:10px;padding:3px 7px;flex-shrink:0;}
+
+/* ── AI parsing overlay ── */
+.parse-overlay{position:fixed;inset:0;background:rgba(26,26,26,.7);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px);}
+.parse-modal{background:#fff;border-radius:14px;padding:28px 32px;width:340px;text-align:center;box-shadow:0 12px 48px rgba(0,0,0,.25);}
+.parse-spinner{width:40px;height:40px;border:3px solid #E8E8E8;border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.parse-title{font-size:14px;font-weight:600;color:var(--dark);margin-bottom:6px;}
+.parse-sub{font-size:12px;color:#999;line-height:1.5;}
+.parse-steps{margin-top:14px;display:flex;flex-direction:column;gap:5px;}
+.parse-step{font-size:11px;padding:5px 10px;border-radius:6px;display:flex;align-items:center;gap:7px;text-align:left;}
+.parse-step.active{background:#F0EBF9;color:var(--purple);font-weight:600;}
+.parse-step.done{color:#3D9970;}
+.parse-step.wait{color:#CCC;}
+
+/* ── Error modal ── */
+.err-modal{background:#fff;border-radius:14px;padding:28px 32px;width:360px;text-align:center;box-shadow:0 12px 48px rgba(0,0,0,.25);}
+.err-icon{font-size:32px;margin-bottom:10px;}
+.err-title{font-size:14px;font-weight:600;color:#C0392B;margin-bottom:8px;}
+.err-body{font-size:12px;color:#666;line-height:1.6;margin-bottom:16px;}
+
+.form-inner{padding:14px 14px 60px;display:flex;flex-direction:column;gap:5px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card.disabled{opacity:.5;}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;cursor:pointer;user-select:none;}
+.card-head:hover{background:#FAFAFA;}
+.ch-l{display:flex;align-items:center;gap:9px;}
+.ch-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.ic-r{background:#FFF0EE;}.ic-b{background:#EBF2FF;}.ic-p{background:#F0EBF9;}
+.ic-g{background:#EDFDF4;}.ic-a{background:#FFF9EB;}.ic-gr{background:#F5F5F5;}
+.ch-title{font-size:13px;font-weight:600;}
+.ch-right{display:flex;align-items:center;gap:8px;}
+.ch-arr{color:#CCC;font-size:9px;transition:transform .2s;}
+.ch-arr.open{transform:rotate(180deg);}
+.card-body{padding:0 13px 13px;display:none;flex-direction:column;gap:10px;}
+.card-body.open{display:flex;}
+.row{display:flex;gap:9px;}
+.field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
+label{font-size:11px;font-weight:500;color:#555;}
+input[type=text],textarea{background:#FAFAFA;border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:var(--f);font-size:12px;color:var(--dark);outline:none;width:100%;transition:border-color .15s;}
+input:focus,textarea:focus{border-color:var(--purple);background:#fff;box-shadow:0 0 0 3px rgba(107,63,160,.1);}
+textarea{resize:vertical;min-height:72px;line-height:1.5;}
+.hint{font-size:10px;color:#AAA;margin-top:1px;}
+.tw{background:#FAFAFA;border:1px solid var(--border);border-radius:6px;padding:5px 7px;min-height:36px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;cursor:text;transition:border-color .15s;}
+.tw:focus-within{border-color:var(--purple);background:#fff;box-shadow:0 0 0 3px rgba(107,63,160,.1);}
+.tag{background:#EDE8F5;color:var(--purple);border-radius:4px;padding:2px 6px 2px 8px;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:3px;}
+.tx{cursor:pointer;color:#A78BCC;font-size:12px;border:none;background:none;padding:0;line-height:1;}
+.tx:hover{color:#C0392B;}
+.tinp{border:none;background:transparent;outline:none;font-family:var(--f);font-size:12px;color:var(--dark);min-width:80px;flex:1;padding:1px 0;}
+.co-card{border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;background:var(--card);}
+.co-head{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:#F8F7FF;cursor:pointer;user-select:none;}
+.co-num{width:22px;height:22px;background:var(--purple);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
+.co-name{font-size:13px;font-weight:600;color:var(--dark);}
+.co-body{padding:11px;display:none;flex-direction:column;gap:10px;}
+.co-body.open{display:flex;}
+.pr-card{border:1px solid #E0DAFA;border-radius:8px;overflow:hidden;margin-bottom:5px;background:#FDFCFF;}
+.pr-head{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:#F5F3FF;cursor:pointer;font-size:11px;font-weight:600;color:#555;user-select:none;}
+.pr-body{padding:10px;display:none;flex-direction:column;gap:8px;}
+.pr-body.open{display:flex;}
+.pr-label{font-size:9px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;}
+.rl{display:flex;flex-direction:column;gap:4px;}
+.ri{display:flex;gap:5px;align-items:center;}
+.ri input{flex:1;}
+.cv{width:720px;background:#fff;box-shadow:0 4px 32px rgba(0,0,0,.2);border-radius:1px;font-family:var(--f);font-size:10pt;line-height:1.45;color:#1A1A1A;}
+.cv-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 36px 14px;border-bottom:1.5px solid #E8E8E8;}
+.cv-hdr-name h1{font-size:14pt;font-weight:700;color:#1A1A1A;margin:0 0 3px;}
+.cv-hdr-name p{font-size:10pt;color:#666;margin:0;font-weight:400;}
+.cv-hdr-logo img{height:28px;width:auto;display:block;}
+.cv-body{padding:18px 36px 28px;}
+.cv-sec{margin-bottom:6px;}
+.cv-sec-title{font-size:14pt;font-weight:700;color:#6B3FA0;margin:0 0 8px;padding-top:10px;}
+.cv-sec-title.lg{font-size:16pt;}
+.cv-sublabel{font-size:12pt;font-weight:400;color:#1A1A1A;margin:8px 0 3px;}
+.cv-co-row{display:flex;align-items:baseline;gap:8px;margin:10px 0 2px;}
+.cv-company{font-size:12pt;font-weight:700;color:#000000;}
+.cv-date{font-size:10pt;color:#666666;white-space:nowrap;}
+.cv-role{font-size:10pt;color:#434343;margin:0 0 6px;}
+.cv-text{font-size:10pt;color:#434343;line-height:1.55;margin-bottom:8px;white-space:pre-wrap;}
+.cv-meta{font-size:10pt;color:#434343;margin-bottom:2px;}
+.cv-tech{background:#F2F2F2;border:0.5px solid #DEDEDE;border-bottom:2px solid #DEDEDE;padding:6px 10px;font-size:10pt;color:#555555;line-height:1.6;margin-bottom:10px;}
+.cv-skill-line{font-size:10pt;margin-bottom:4px;}
+.cv-skill-label{font-weight:700;color:#1A1A1A;}
+.cv-skill-items{color:#666666;}
+.cv-ul{margin:3px 0 8px 18px;padding:0;}
+.cv-ul li{font-size:10pt;margin-bottom:3px;list-style:disc;color:#434343;}
+.cv-project{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #F0F0F0;}
+.cv-project:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.cv-co-block{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #F0EEFF;}
+.cv-co-block:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.cv-section-divider{border:none;border-top:1px solid #DDDDDD;margin:14px 0 4px;}
+.cv-institution{font-size:12pt;font-weight:400;color:#1A1A1A;margin:8px 0 2px;}
+.cv-year{font-size:10pt;color:#434343;margin-bottom:2px;}
+.cv-degree{font-size:10pt;color:#434343;margin-bottom:8px;}
+.cv-ftr{border-top:1px solid #E8E8E8;padding:10px 36px;display:flex;justify-content:space-between;align-items:center;font-size:8pt;color:#888;}
+.toast{position:fixed;bottom:20px;right:20px;background:#1A1A1A;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;font-family:var(--f);opacity:0;transform:translateY(6px);transition:all .2s;pointer-events:none;z-index:999;max-width:280px;}
+.toast.show{opacity:1;transform:translateY(0);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:#D0D0D0;border-radius:99px;}
+@media(max-width:860px){
+  .app{height:auto;min-height:100vh;overflow:visible;}
+  .panels{flex-direction:column;overflow:visible;}
+  .lpanel{width:100%;border-right:none;border-bottom:1px solid var(--border);}
+  .rpanel{display:none;padding:12px 8px;}
+  .rpanel.mob-show{display:flex;}
+  .topbar{position:sticky;top:0;z-index:100;}
+  .tb-sep,.tb-title{display:none;}
+  .btn-mob{display:inline-flex!important;}
+  .cv{width:100%;font-size:8.5pt;}
+  .cv-hdr{padding:12px 14px 10px;}
+  .cv-body{padding:12px 14px 18px;}
+  .cv-ftr{padding:7px 14px;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="tb-logo"><img src="Seven-Pro-Logotypes.svg" alt="SevenPro"></div>
+    <div class="tb-sep"></div>
+    <span class="tb-title">CV Generator</span>
+    <div class="tb-actions">
+      <button class="btn btn-upload btn-mob" onclick="toggleMob()">👁 Preview</button>
+      <button class="btn btn-upload" onclick="triggerUpload()" title="Import CV (PDF or DOCX)">⬆ Import CV</button>
+      <button class="btn btn-secondary" onclick="genPdf()">↓ PDF</button>
+      <button class="btn btn-primary" onclick="genDocx()">↓ DOCX</button>
+    </div>
+  </div>
+  <div class="panels">
+    <div class="lpanel"><div class="form-inner" id="formRoot"></div></div>
+    <div class="rpanel" id="rpanel">
+      <div class="preview-lbl">Live Preview</div>
+      <div id="cvOut"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="cvFileInput" accept=".pdf,.docx,.doc" style="display:none" onchange="handleFileSelect(this)">
+
+<!-- Parse overlay -->
+<div class="parse-overlay" id="parseOverlay" style="display:none">
+  <div class="parse-modal">
+    <div class="parse-spinner"></div>
+    <div class="parse-title" id="parseTitle">Читання документу…</div>
+    <div class="parse-sub" id="parseSub">Будь ласка, зачекайте</div>
+    <div class="parse-steps">
+      <div class="parse-step active" id="step1">📄 Зчитування файлу</div>
+      <div class="parse-step wait" id="step2">🤖 AI розпізнавання</div>
+      <div class="parse-step wait" id="step3">✏️ Заповнення форми</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO
+// ─────────────────────────────────────────────────────────────────────────────
+const LOGO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA20AAADICAYAAABSkwPbAAA6GElEQVR4Xu2dbXLbuLauewg9hAzBVbFkdX75506cXdczaM+g89PQ6ap4BskITlK1j6X0/uM9guMheAZXM9i8ewLdl6AkWwZJCSCwQAB8nqq3upPog1wiwfVi4eOnn2AQ1cfFZXV18am6WnyrPlw81drU+utAm/rfH+v/PjSv+/DuzPwMOE11vXhTfVjc1DH80sSyieu8Is4AAAAAAACJsTPKXwzT5iJt8L5oI2h+NrxQXV/+XH2Yf65jpTsjzBjaSMf5G3EGAAAAAACIwM4sP3aYs+HC1LVoqsp+nRJtNb8b1WcAAAAAAIDg7EzcY8uIhdTV7IuurJrfPTW2leWAZtkUnRQAAAAAAADhqK4Wv4qauNfaTNXQbecsDx6G7aqNnh9tHgMAAAAAAAA4UBurzx2GS17vLz6Zx1Iy22Hv0TomDjT/bB4LAAAAAAAAWFCbqm9tkxVT0zB0TSW/de4RdTX7Yh4TAAAAAAAAHGG3rVHbYEVX2cZ5dMO8F8YZAAAAAADAjtGGZPfp/S/X5jGWQPVhdtY611FVdgcFAAAAAACAN9qgts3U6KpKWxxst+jXpuNcx9XHxaV5rAAAAAAAAPBTwkZO6+ri0TzenGm2fTLPMQ1t2PYLAAAAAACgg4SN3FaFrKitt3pqnVtKYn4zAAAAAADA/9muMrcNVFqqSqiCVqlW8w/FMG0AAAAAAB5IvsoMAAAAAADwHxI2clt3LvaqAAAAAElFTkSuQmCC";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const state = {
+  name: 'Anton K.',
+  position: 'Senior .Net/JavaScript Developer',
+  recruitmentFeedback: 'Strong communication skills and cultural fit for the team.',
+  technicalFeedback:   'Solid .NET and JavaScript background. Well-versed in modern frameworks.',
+  technicalSkills: ['React','Node.js','TypeScript','SQL Server','Angular','.NET Core'],
+  experiences: [{
+    company: 'Company Test',
+    projects: [{
+      role: 'Software Engineer',
+      dateRange: 'December 2017 – November 2019',
+      description: 'All services related to renting a home. Special services for landlords, agents and other roles.',
+      technologies: ['Windows Forms','Web Services','.Net Framework 3.5'],
+      responsibilities: ['Working closely with a part of a team in Iceland;','Technical documentation.']
+    }]
+  }],
+  education:[{school:'UEPA (Ukrainian Engineering and Pedagogical Academy)',period:'1999 – 2005 · Kharkiv, Ukraine',degree:"Master's Degree in Radio-Electronics, Computer Systems"}],
+  certifications:[{certName:'Oracle Certified Associate',year:'2015'}],
+  languages:[{language:'English',level:'Upper-Intermediate'},{language:'Ukrainian',level:'Native'}],
+  show: {insights:true, skills:true, experience:true, education:true, certifications:true, languages:true}
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILE UPLOAD TRIGGER
+// ─────────────────────────────────────────────────────────────────────────────
+function triggerUpload() {
+  document.getElementById('cvFileInput').value = '';
+  document.getElementById('cvFileInput').click();
+}
+
+async function handleFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['pdf','docx','doc'].includes(ext)) {
+    showToast('❌ Підтримуються тільки PDF та DOCX файли');
+    return;
+  }
+  await parseCV(file, ext);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CV PARSING PIPELINE
+// ─────────────────────────────────────────────────────────────────────────────
+function showParseOverlay() { document.getElementById('parseOverlay').style.display='flex'; }
+function hideParseOverlay() { document.getElementById('parseOverlay').style.display='none'; }
+
+function setParseStep(n, status) {
+  // status: 'active' | 'done' | 'wait'
+  for (let i=1;i<=3;i++) {
+    const el = document.getElementById('step'+i);
+    el.className = 'parse-step ' + (i < n ? 'done' : i === n ? status : 'wait');
+  }
+}
+
+function setParseTitle(t, s) {
+  document.getElementById('parseTitle').textContent = t;
+  document.getElementById('parseSub').textContent = s || '';
+}
+
+async function parseCV(file, ext) {
+  showParseOverlay();
+  setParseStep(1, 'active');
+  setParseTitle('Зчитування документу…', file.name);
+
+  let textContent = '';
+  let base64Data = null;
+  let isPdf = ext === 'pdf';
+
+  try {
+    if (isPdf) {
+      // For PDF → send as base64 to Claude API (it can read PDFs natively)
+      base64Data = await fileToBase64(file);
+    } else {
+      // For DOCX → extract text with mammoth
+      await waitLib('mammoth', 5000);
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      textContent = result.value;
+      if (!textContent || textContent.trim().length < 50) {
+        throw new Error('Не вдалося зчитати текст з DOCX. Можливо файл захищений або порожній.');
+      }
+    }
+  } catch(e) {
+    hideParseOverlay();
+    showErrorModal('Помилка зчитування файлу', e.message || String(e));
+    return;
+  }
+
+  setParseStep(2, 'active');
+  setParseTitle('AI розпізнає резюме…', 'Відправляємо до Claude API');
+
+  let parsedData;
+  try {
+    parsedData = await callClaudeAPI(textContent, base64Data, isPdf);
+  } catch(e) {
+    hideParseOverlay();
+    showErrorModal('Помилка AI розпізнавання', e.message || String(e));
+    return;
+  }
+
+  setParseStep(3, 'active');
+  setParseTitle('Заповнення форми…', 'Розносимо дані по блоках');
+
+  try {
+    applyParsedData(parsedData);
+  } catch(e) {
+    hideParseOverlay();
+    showErrorModal('Помилка заповнення форми', e.message || String(e));
+    return;
+  }
+
+  hideParseOverlay();
+  showToast('✅ Резюме успішно імпортовано!');
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = () => rej(new Error('Не вдалося прочитати файл'));
+    r.readAsDataURL(file);
+  });
+}
+
+function waitLib(name, timeout = 5000) {
+  const start = Date.now();
+  return new Promise((res, rej) => {
+    const check = () => {
+      if (typeof window[name] !== 'undefined') return res();
+      if (Date.now() - start > timeout) return rej(new Error(name + ' library not loaded'));
+      setTimeout(check, 200);
+    };
+    check();
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLAUDE API CALL
+// ─────────────────────────────────────────────────────────────────────────────
+async function callClaudeAPI(textContent, base64Data, isPdf) {
+  const systemPrompt = `You are a CV/resume parser. Extract information EXACTLY as it appears in the document — do NOT invent, rephrase, or add anything that is not explicitly stated.
+
+Return ONLY a valid JSON object with this exact structure (no markdown fences, no extra text):
+{
+  "name": "string — full name of candidate",
+  "position": "string — job title/position",
+  "recruitmentFeedback": "",
+  "technicalFeedback": "",
+  "technicalSkills": ["array of skill strings"],
+  "experiences": [
+    {
+      "company": "string — company name",
+      "projects": [
+        {
+          "role": "string — job title at this company",
+          "dateRange": "string — date range e.g. Jan 2020 – Present",
+          "description": "string — project or role description",
+          "technologies": ["array of tech strings"],
+          "responsibilities": ["array of responsibility strings"]
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "string — institution name",
+      "period": "string — years and location e.g. 2015–2019 · Kyiv, Ukraine",
+      "degree": "string — degree and field"
+    }
+  ],
+  "certifications": [
+    {
+      "certName": "string — certification name",
+      "year": "string — year"
+    }
+  ],
+  "languages": [
+    {
+      "language": "string — language name",
+      "level": "string — proficiency level"
+    }
+  ]
+}
+
+Rules:
+- recruitmentFeedback and technicalFeedback must ALWAYS be empty strings ""
+- If a field is not present in the CV, use empty string "" or empty array []
+- Multiple roles at same company → one company entry with multiple projects
+- Extract ALL skills mentioned anywhere in the CV into technicalSkills array
+- Responsibilities should be separate array items (one per line/bullet)
+- Technologies per project/role should be in the technologies array for that project
+- Return ONLY the JSON object, nothing else`;
+
+  let userContent;
+  if (isPdf) {
+    userContent = [
+      {
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: base64Data
+        }
+      },
+      {
+        type: "text",
+        text: "Parse this CV/resume and return the JSON as instructed."
+      }
+    ];
+  } else {
+    userContent = `Parse this CV/resume text and return the JSON as instructed.\n\n---CV TEXT START---\n${textContent}\n---CV TEXT END---`;
+  }
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userContent }]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error('API error ' + response.status + ': ' + (err.error?.message || response.statusText));
+  }
+
+  const data = await response.json();
+  const rawText = (data.content || []).map(b => b.type === 'text' ? b.text : '').join('');
+
+  // Strip possible markdown fences
+  const clean = rawText.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(clean);
+  } catch(e) {
+    throw new Error('AI повернув некоректний JSON. Спробуйте ще раз або перевірте файл.\n\nВідповідь: ' + clean.slice(0,200));
+  }
+  return parsed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// APPLY PARSED DATA TO STATE
+// ─────────────────────────────────────────────────────────────────────────────
+function applyParsedData(d) {
+  // Only overwrite fields that exist in parsed data and are non-empty
+  if (d.name) state.name = d.name;
+  if (d.position) state.position = d.position;
+
+  // Always keep feedback empty (as per system prompt), don't overwrite existing
+  // state.recruitmentFeedback and state.technicalFeedback stay untouched
+
+  if (Array.isArray(d.technicalSkills) && d.technicalSkills.length > 0) {
+    state.technicalSkills = d.technicalSkills.filter(s => s && typeof s === 'string');
+  }
+
+  if (Array.isArray(d.experiences) && d.experiences.length > 0) {
+    state.experiences = d.experiences.map(co => ({
+      company: co.company || '',
+      projects: Array.isArray(co.projects) && co.projects.length > 0
+        ? co.projects.map(p => ({
+            role: p.role || '',
+            dateRange: p.dateRange || '',
+            description: p.description || '',
+            technologies: Array.isArray(p.technologies) ? p.technologies.filter(Boolean) : [],
+            responsibilities: Array.isArray(p.responsibilities) ? p.responsibilities.filter(r => r && r.trim()) : []
+          }))
+        : [{role:'',dateRange:'',description:'',technologies:[],responsibilities:[]}]
+    }));
+  }
+
+  if (Array.isArray(d.education) && d.education.length > 0) {
+    state.education = d.education.map(e => ({
+      school: e.school || '',
+      period: e.period || '',
+      degree: e.degree || ''
+    }));
+    state.show.education = true;
+  }
+
+  if (Array.isArray(d.certifications) && d.certifications.length > 0) {
+    state.certifications = d.certifications.map(c => ({
+      certName: c.certName || '',
+      year: c.year || ''
+    }));
+    state.show.certifications = true;
+  }
+
+  if (Array.isArray(d.languages) && d.languages.length > 0) {
+    state.languages = d.languages.map(l => ({
+      language: l.language || '',
+      level: l.level || ''
+    }));
+    state.show.languages = true;
+  }
+
+  // Rebuild entire form and preview
+  buildForm();
+  buildPreview();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ERROR MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function showErrorModal(title, body) {
+  const overlay = document.createElement('div');
+  overlay.className = 'parse-overlay';
+  overlay.innerHTML = `<div class="err-modal">
+    <div class="err-icon">⚠️</div>
+    <div class="err-title">${esc(title)}</div>
+    <div class="err-body">${esc(body)}</div>
+    <button class="btn btn-primary" style="width:100%" onclick="this.closest('.parse-overlay').remove()">Закрити</button>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCX DATA COLLECTION
+// ─────────────────────────────────────────────────────────────────────────────
+function collectData() {
+  const dot = a => (a||[]).filter(Boolean).join(' · ');
+  const sh  = state.show;
+  return {
+    candidateName:       state.name || '',
+    position:            state.position || '',
+    recruitmentFeedback: sh.insights ? (state.recruitmentFeedback || '') : '',
+    technicalFeedback:   sh.insights ? (state.technicalFeedback   || '') : '',
+    skillGroups: sh.skills && state.technicalSkills.length
+      ? [{label:'Technical Skills', items: dot(state.technicalSkills)}]
+      : [],
+    experiences: sh.experience
+      ? state.experiences.flatMap(co =>
+          co.projects.map(p => ({
+            company:     co.company || '',
+            dateRange:   p.dateRange || '',
+            role:        p.role || '',
+            description: p.description || '',
+            technologies: dot(p.technologies),
+            responsibilities: (p.responsibilities||[]).filter(r=>r.trim())
+          }))
+        )
+      : [],
+    education:      sh.education      ? state.education.map(e=>({school:e.school||'',period:e.period||'',degree:e.degree||''}))      : [],
+    certifications: sh.certifications ? state.certifications.map(c=>({certName:c.certName||'',year:c.year||''})) : [],
+    languages:      sh.languages      ? state.languages.map(l=>({language:l.language||'',level:l.level||''}))   : []
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCX GENERATION
+// ─────────────────────────────────────────────────────────────────────────────
+let templateBuffer = null;
+
+async function loadTemplate() {
+  try {
+    const r = await fetch('template.docx');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    templateBuffer = await r.arrayBuffer();
+  } catch(e) { console.warn('template.docx not preloaded:', e.message); }
+}
+
+async function genDocx() {
+  showToast('⏳ Preparing…');
+  if (!templateBuffer) {
+    try {
+      const r = await fetch('template.docx');
+      if (!r.ok) throw new Error('template.docx not found (HTTP ' + r.status + ')');
+      templateBuffer = await r.arrayBuffer();
+    } catch(e) { showToast('❌ ' + e.message); return; }
+  }
+  for (let i=0;i<20;i++) {
+    if (typeof docxtemplater!=='undefined' && typeof PizZip!=='undefined') break;
+    await new Promise(r=>setTimeout(r,250));
+  }
+  if (typeof docxtemplater==='undefined') { showToast('❌ Library not loaded. Refresh.'); return; }
+  try {
+    const zip = new PizZip(templateBuffer.slice(0));
+    const doc = new docxtemplater(zip, {paragraphLoop:true, linebreaks:true});
+    doc.render(collectData());
+    const blob = doc.getZip().generate({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = (state.name||'CV').replace(/[^\w\s\-]/g,'') + '.docx';
+    a.click(); URL.revokeObjectURL(url);
+    showToast('✅ DOCX downloaded!');
+  } catch(e) { console.error(e); showToast('❌ ' + e.message); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF
+// ─────────────────────────────────────────────────────────────────────────────
+function genPdf() {
+  const el = document.getElementById('cvOut');
+  if (!el||!el.firstElementChild) { showToast('❌ Nothing to export'); return; }
+  if (typeof html2pdf==='undefined') { showToast('❌ html2pdf not loaded'); return; }
+  showToast('⏳ Generating PDF…');
+  const name = (state.name||'CV').replace(/[^\w\s\-]/g,'');
+  const orig = el.style.width; el.style.width='794px';
+  html2pdf().set({margin:[10,10,10,10],filename:name+'.pdf',
+    image:{type:'jpeg',quality:.98},
+    html2canvas:{scale:2,useCORS:true,logging:false},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+  }).from(el.firstElementChild).save().then(()=>{el.style.width=orig;showToast('✅ PDF downloaded!');});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREVIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let previewTimer=null;
+function schedulePreview(){clearTimeout(previewTimer);previewTimer=setTimeout(buildPreview,300);}
+
+function buildPreview() {
+  const s=state; const dot=a=>(a||[]).filter(Boolean).join(' · ');
+  let h=`<div class="cv">
+  <div class="cv-hdr">
+    <div class="cv-hdr-name"><h1>${esc(s.name)}</h1><p>${esc(s.position)}</p></div>
+    <div class="cv-hdr-logo"><img src="${LOGO_SRC}" alt="SevenPro"></div>
+  </div><div class="cv-body">`;
+
+  if (s.show.insights && (s.recruitmentFeedback||s.technicalFeedback)) {
+    h+=`<div class="cv-sec"><div class="cv-sec-title">Interview insights</div>`;
+    if(s.recruitmentFeedback) h+=`<div class="cv-sublabel">Recruitment feedback:</div><div class="cv-text">${esc(s.recruitmentFeedback)}</div>`;
+    if(s.technicalFeedback)   h+=`<div class="cv-sublabel">Technical feedback:</div><div class="cv-text">${esc(s.technicalFeedback)}</div>`;
+    h+=`</div>`;
+  }
+
+  if (s.show.skills && s.technicalSkills.length) {
+    h+=`<hr class="cv-section-divider"><div class="cv-sec"><div class="cv-sec-title">Technical skills</div>
+      <div class="cv-skill-line"><span class="cv-skill-label">Technical Skills:&nbsp;&nbsp;</span><span class="cv-skill-items">${esc(dot(s.technicalSkills))}</span></div>
+    </div>`;
+  }
+
+  if (s.show.experience && s.experiences.length) {
+    h+=`<hr class="cv-section-divider"><div class="cv-sec"><div class="cv-sec-title">Professional experience</div>`;
+    s.experiences.forEach(co=>{
+      h+=`<div class="cv-co-block"><div class="cv-company">${esc(co.company)}</div>`;
+      (co.projects||[]).forEach(p=>{
+        h+=`<div class="cv-project">
+          <div class="cv-co-row"><span class="cv-date">${esc(p.dateRange)}</span></div>
+          <div class="cv-role">${esc(p.role)}</div>`;
+        if(p.description){
+          h+=`<div class="cv-sublabel">Project Description</div>
+              <div class="cv-text">${esc(p.description)}</div>`;
+        }
+        if(p.technologies.length){
+          h+=`<div class="cv-sublabel">Technologies</div>
+              <div class="cv-tech">${esc(dot(p.technologies))}</div>`;
+        }
+        const rs=(p.responsibilities||[]).filter(r=>r.trim());
+        if(rs.length){
+          h+=`<div class="cv-sublabel">Responsibilities</div><ul class="cv-ul">`;
+          rs.forEach(r=>{h+=`<li>${esc(r)}</li>`;});
+          h+=`</ul>`;
+        }
+        h+=`</div>`;
+      });
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if (s.show.education && s.education.length) {
+    h+=`<hr class="cv-section-divider"><div class="cv-sec"><div class="cv-sec-title lg">Education</div>`;
+    s.education.forEach(e=>{
+      h+=`<div style="margin-bottom:12px">
+        <div class="cv-institution">${esc(e.school)}</div>
+        <div class="cv-year">${esc(e.period)}</div>
+        <div class="cv-degree">${esc(e.degree)}</div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if (s.show.certifications && s.certifications.length) {
+    h+=`<hr class="cv-section-divider"><div class="cv-sec"><div class="cv-sec-title lg">Certification</div>`;
+    s.certifications.forEach(c=>{
+      h+=`<div style="margin-bottom:8px">
+        <div class="cv-institution">${esc(c.certName)}</div>
+        <div class="cv-year">${esc(c.year)}</div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  if (s.show.languages && s.languages.length) {
+    h+=`<hr class="cv-section-divider"><div class="cv-sec"><div class="cv-sec-title lg">Languages</div>`;
+    s.languages.forEach(l=>{
+      h+=`<div class="cv-skill-line"><span class="cv-skill-label">${esc(l.language)}:</span> <span class="cv-text" style="display:inline;margin:0">${esc(l.level)}</span></div>`;
+    });
+    h+=`</div>`;
+  }
+
+  h+=`</div><div class="cv-ftr">
+    <img src="${LOGO_SRC}" alt="SevenPro" style="height:18px;width:auto;">
+    <div style="text-align:right;font-size:8pt;color:#888;line-height:1.6;">welcome@seven-pro.com<br>www.seven-pro.com</div>
+  </div></div>`;
+  document.getElementById('cvOut').innerHTML=h;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORM HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const ge=id=>document.getElementById(id);
+
+function toggleCard(id){const b=ge(id+'_b'),a=ge(id+'_a');b.classList.toggle('open');if(a)a.classList.toggle('open');}
+
+function mkCard(id,icon,ic,title,secKey,open,body){
+  const d=document.createElement('div');d.className='card';
+  const naBtn=secKey?`<button class="btn-na ${state.show[secKey]?'':'active'}" onclick="toggleSection('${secKey}',this);event.stopPropagation()">${state.show[secKey]?'N/A':'Hidden'}</button>`:'';
+  d.innerHTML=`<div class="card-head" onclick="toggleCard('${id}')">
+    <div class="ch-l"><div class="ch-icon ${ic}">${icon}</div><span class="ch-title">${title}</span></div>
+    <div class="ch-right">${naBtn}<span class="ch-arr ${open?'open':''}" id="${id}_a">▼</span></div>
+  </div>
+  <div class="card-body ${open?'open':''}" id="${id}_b">${body}</div>`;
+  if(secKey&&!state.show[secKey])d.classList.add('disabled');
+  return d;
+}
+
+function toggleSection(key,btn){
+  state.show[key]=!state.show[key];
+  btn.textContent=state.show[key]?'N/A':'Hidden';
+  btn.classList.toggle('active',!state.show[key]);
+  btn.closest('.card').classList.toggle('disabled',!state.show[key]);
+  schedulePreview();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TAG INPUT
+// ─────────────────────────────────────────────────────────────────────────────
+function mkTags(wrap,arr,onChange){
+  wrap.innerHTML='';
+  arr.forEach((t,i)=>{
+    const s=document.createElement('span');s.className='tag';
+    s.innerHTML=esc(t)+`<button class="tx" data-i="${i}">×</button>`;
+    s.querySelector('.tx').onclick=ev=>{ev.stopPropagation();arr.splice(i,1);onChange(arr);mkTags(wrap,arr,onChange);};
+    wrap.appendChild(s);
+  });
+  const inp=document.createElement('input');
+  inp.className='tinp';inp.placeholder='Type & press Enter or ,';
+  inp.onkeydown=ev=>{
+    if((ev.key==='Enter'||ev.key===',')&&inp.value.trim()){
+      ev.preventDefault();
+      const v=inp.value.replace(/,$/,'').trim();
+      if(v){inp.value='';arr.push(v);onChange(arr);mkTags(wrap,arr,onChange);}
+    }
+    if(ev.key==='Backspace'&&!inp.value&&arr.length){arr.pop();onChange(arr);mkTags(wrap,arr,onChange);}
+  };
+  inp.onpaste=ev=>{
+    ev.preventDefault();
+    const text=(ev.clipboardData||window.clipboardData).getData('text');
+    const items=text.split(/[,;\n\r\t]+/).map(s=>s.trim()).filter(s=>s&&!arr.includes(s));
+    if(items.length){inp.value='';items.forEach(v=>arr.push(v));onChange(arr);mkTags(wrap,arr,onChange);}
+  };
+  inp.onblur=()=>{const v=inp.value.replace(/,$/,'').trim();if(v){arr.push(v);onChange(arr);mkTags(wrap,arr,onChange);}};
+  wrap.appendChild(inp);
+  wrap.onclick=()=>inp.focus();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPERIENCE FORM
+// ─────────────────────────────────────────────────────────────────────────────
+function buildExpHtml(){
+  let h='';
+  state.experiences.forEach((co,ci)=>{
+    const coLbl=co.company||`Company ${ci+1}`;
+    let projH='';
+    (co.projects||[]).forEach((p,pi)=>{
+      const respH=(p.responsibilities||[]).map((r,ri)=>`
+        <div class="ri">
+          <input type="text" value="${esc(r)}" placeholder="Responsibility…"
+            oninput="state.experiences[${ci}].projects[${pi}].responsibilities[${ri}]=this.value;schedulePreview()">
+          <button class="btn btn-ghost" onclick="rmResp(${ci},${pi},${ri})">✕</button>
+        </div>`).join('');
+      projH+=`<div class="pr-card">
+        <div class="pr-head" onclick="togglePr(${ci},${pi})">
+          <span>Project ${pi+1}</span>
+          <div style="display:flex;gap:5px;align-items:center">
+            ${co.projects.length>1?`<button class="btn btn-danger" onclick="rmProject(event,${ci},${pi})">Remove</button>`:''}
+            <span style="color:#CCC;font-size:9px" id="parr_${ci}_${pi}">▼</span>
+          </div>
+        </div>
+        <div class="pr-body ${pi===0?'open':''}" id="pb_${ci}_${pi}">
+          <div class="row">
+            <div class="field"><label>Role</label>
+              <input type="text" value="${esc(p.role)}" placeholder="Senior Engineer"
+                oninput="state.experiences[${ci}].projects[${pi}].role=this.value;schedulePreview()">
+            </div>
+            <div class="field"><label>Date Range</label>
+              <input type="text" value="${esc(p.dateRange)}" placeholder="Jan 2020 – Present"
+                oninput="state.experiences[${ci}].projects[${pi}].dateRange=this.value;schedulePreview()">
+            </div>
+          </div>
+          <div class="field"><label>Project Description</label>
+            <textarea oninput="state.experiences[${ci}].projects[${pi}].description=this.value;schedulePreview()">${esc(p.description)}</textarea>
+          </div>
+          <div class="field"><label>Technologies</label>
+            <div class="tw" id="ptw_${ci}_${pi}"></div>
+            <div class="hint">Enter or comma to add · Paste to add multiple at once</div>
+          </div>
+          <div class="field"><label>Responsibilities</label>
+            <div class="rl" id="prl_${ci}_${pi}">${respH}</div>
+            <button class="btn btn-outline" style="margin-top:5px;width:fit-content" onclick="addResp(${ci},${pi})">+ Add responsibility</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    h+=`<div class="co-card" id="co_${ci}">
+      <div class="co-head" onclick="toggleCo(${ci})">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="co-num">${ci+1}</span>
+          <span class="co-name" id="colbl_${ci}">${esc(coLbl)}</span>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          ${state.experiences.length>1?`<button class="btn btn-danger" onclick="rmCompany(event,${ci})">Remove</button>`:''}
+          <span style="color:#CCC;font-size:9px" id="coarr_${ci}">▼</span>
+        </div>
+      </div>
+      <div class="co-body ${ci===0?'open':''}" id="cb_${ci}">
+        <div class="field">
+          <label>Company Name</label>
+          <input type="text" value="${esc(co.company)}" placeholder="Company"
+            oninput="state.experiences[${ci}].company=this.value;ge('colbl_${ci}').textContent=this.value||'Company ${ci+1}';schedulePreview()">
+        </div>
+        <div class="pr-label" style="margin-top:4px">Projects / Roles</div>
+        ${projH}
+        <button class="btn btn-add" style="border-color:#C4B5D9;color:var(--purple);font-size:11px;padding:7px" onclick="addProject(${ci})">＋ Add Project / Role</button>
+      </div>
+    </div>`;
+  });
+  h+=`<button class="btn btn-add" onclick="addCompany()">＋ Add Company</button>`;
+  return h;
+}
+
+function buildEduHtml(){
+  let h='';
+  state.education.forEach((e,i)=>{
+    h+=`<div class="co-card"><div class="co-body open" style="padding:11px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;font-weight:600;color:#555">Education ${i+1}</span>
+        ${state.education.length>1?`<button class="btn btn-danger" onclick="rmEdu(${i})">Remove</button>`:''}
+      </div>
+      <div class="field"><label>Institution</label>
+        <input type="text" value="${esc(e.school)}" placeholder="University"
+          oninput="state.education[${i}].school=this.value;schedulePreview()">
+      </div>
+      <div class="row">
+        <div class="field"><label>Period & Location</label>
+          <input type="text" value="${esc(e.period)}" placeholder="2019–2023 · City"
+            oninput="state.education[${i}].period=this.value;schedulePreview()">
+        </div>
+        <div class="field"><label>Degree</label>
+          <input type="text" value="${esc(e.degree)}" placeholder="Bachelor of Science"
+            oninput="state.education[${i}].degree=this.value;schedulePreview()">
+        </div>
+      </div>
+    </div></div>`;
+  });
+  h+=`<button class="btn btn-add" onclick="addEdu()">＋ Add Education</button>`;
+  return h;
+}
+
+function buildCertHtml(){
+  let h='';
+  state.certifications.forEach((c,i)=>{
+    h+=`<div class="co-card"><div style="padding:9px 11px;display:flex;gap:9px;align-items:flex-end;">
+      <div class="field" style="flex:3"><label>Certification Name</label>
+        <input type="text" value="${esc(c.certName)}" placeholder="AWS Certified"
+          oninput="state.certifications[${i}].certName=this.value;schedulePreview()">
+      </div>
+      <div class="field" style="flex:1;min-width:70px"><label>Year</label>
+        <input type="text" value="${esc(c.year)}" placeholder="2023"
+          oninput="state.certifications[${i}].year=this.value;schedulePreview()">
+      </div>
+      ${state.certifications.length>1?`<button class="btn btn-danger" style="flex-shrink:0;margin-bottom:1px" onclick="rmCert(${i})">✕</button>`:''}
+    </div></div>`;
+  });
+  h+=`<button class="btn btn-add" onclick="addCert()">＋ Add Certification</button>`;
+  return h;
+}
+
+function buildLangHtml(){
+  let h='';
+  state.languages.forEach((l,i)=>{
+    h+=`<div class="co-card"><div style="padding:9px 11px;display:flex;gap:9px;align-items:flex-end;">
+      <div class="field" style="flex:2"><label>Language</label>
+        <input type="text" value="${esc(l.language)}" placeholder="English"
+          oninput="state.languages[${i}].language=this.value;schedulePreview()">
+      </div>
+      <div class="field" style="flex:2"><label>Level</label>
+        <input type="text" value="${esc(l.level)}" placeholder="Upper-Intermediate"
+          oninput="state.languages[${i}].level=this.value;schedulePreview()">
+      </div>
+      ${state.languages.length>1?`<button class="btn btn-danger" style="flex-shrink:0;margin-bottom:1px" onclick="rmLang(${i})">✕</button>`:''}
+    </div></div>`;
+  });
+  h+=`<button class="btn btn-add" onclick="addLang()">＋ Add Language</button>`;
+  return h;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOGGLE FUNCTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+function toggleCo(ci){const b=ge('cb_'+ci),a=ge('coarr_'+ci);b.classList.toggle('open');if(a)a.textContent=b.classList.contains('open')?'▲':'▼';}
+function togglePr(ci,pi){const b=ge(`pb_${ci}_${pi}`),a=ge(`parr_${ci}_${pi}`);b.classList.toggle('open');if(a)a.textContent=b.classList.contains('open')?'▲':'▼';}
+
+function rsec(id,html){const b=ge(id+'_b');if(b)b.innerHTML=html;}
+
+function initProjTags(){
+  state.experiences.forEach((co,ci)=>{
+    (co.projects||[]).forEach((p,pi)=>{
+      const w=ge(`ptw_${ci}_${pi}`);
+      if(w)mkTags(w,p.technologies,t=>{state.experiences[ci].projects[pi].technologies=t;schedulePreview();});
+    });
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+function addCompany(){state.experiences.push({company:'',projects:[{role:'',dateRange:'',description:'',technologies:[],responsibilities:['']}]});rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function rmCompany(ev,ci){ev.stopPropagation();if(state.experiences.length<=1)return;state.experiences.splice(ci,1);rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function addProject(ci){state.experiences[ci].projects.push({role:'',dateRange:'',description:'',technologies:[],responsibilities:['']});rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function rmProject(ev,ci,pi){ev.stopPropagation();if(state.experiences[ci].projects.length<=1)return;state.experiences[ci].projects.splice(pi,1);rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function addResp(ci,pi){state.experiences[ci].projects[pi].responsibilities.push('');rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function rmResp(ci,pi,ri){state.experiences[ci].projects[pi].responsibilities.splice(ri,1);rsec('exp',buildExpHtml());initProjTags();schedulePreview();}
+function addEdu(){state.education.push({school:'',period:'',degree:''});rsec('edu',buildEduHtml());schedulePreview();}
+function rmEdu(i){state.education.splice(i,1);rsec('edu',buildEduHtml());schedulePreview();}
+function addCert(){state.certifications.push({certName:'',year:''});rsec('cert',buildCertHtml());schedulePreview();}
+function rmCert(i){state.certifications.splice(i,1);rsec('cert',buildCertHtml());schedulePreview();}
+function addLang(){state.languages.push({language:'',level:''});rsec('lang',buildLangHtml());schedulePreview();}
+function rmLang(i){state.languages.splice(i,1);rsec('lang',buildLangHtml());schedulePreview();}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD FORM
+// ─────────────────────────────────────────────────────────────────────────────
+function buildForm(){
+  const root=ge('formRoot'); root.innerHTML='';
+  root.appendChild(mkCard('basic','👤','ic-r','Basic Info',null,true,`
+    <div class="row">
+      <div class="field"><label>Full Name</label>
+        <input type="text" value="${esc(state.name)}" oninput="state.name=this.value;schedulePreview()">
+      </div>
+      <div class="field"><label>Current Position</label>
+        <input type="text" value="${esc(state.position)}" oninput="state.position=this.value;schedulePreview()">
+      </div>
+    </div>`));
+
+  root.appendChild(mkCard('insights','💬','ic-b','Interview Insights','insights',true,`
+    <div class="field">
+      <label>Recruitment Feedback</label>
+      <textarea rows="4" oninput="state.recruitmentFeedback=this.value;schedulePreview()">${esc(state.recruitmentFeedback)}</textarea>
+      <div class="hint">Enter creates a new line in the DOCX output</div>
+    </div>
+    <div class="field">
+      <label>Technical Feedback</label>
+      <textarea rows="4" oninput="state.technicalFeedback=this.value;schedulePreview()">${esc(state.technicalFeedback)}</textarea>
+    </div>`));
+
+  root.appendChild(mkCard('skills','⚙️','ic-a','Technical Skills','skills',true,`
+    <div class="field"><label>Skills</label>
+      <div class="tw" id="skillsWrap"></div>
+      <div class="hint">Enter or comma to add one · <strong>Paste</strong> comma-separated list to add many at once</div>
+    </div>`));
+
+  root.appendChild(mkCard('exp','🏢','ic-p','Professional Experience','experience',true,buildExpHtml()));
+  root.appendChild(mkCard('edu','🎓','ic-g','Education','education',false,buildEduHtml()));
+  root.appendChild(mkCard('cert','📜','ic-a','Certifications','certifications',false,buildCertHtml()));
+  root.appendChild(mkCard('lang','🌐','ic-gr','Languages','languages',false,buildLangHtml()));
+
+  mkTags(ge('skillsWrap'),state.technicalSkills,t=>{state.technicalSkills=t;schedulePreview();});
+  initProjTags();
+}
+
+function showToast(msg){const t=ge('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
+function toggleMob(){ge('rpanel').classList.toggle('mob-show');}
+
+buildForm();
+buildPreview();
+loadTemplate();
+</script>
+</body>
+</html>
